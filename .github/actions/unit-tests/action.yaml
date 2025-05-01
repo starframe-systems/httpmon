@@ -1,0 +1,41 @@
+name: Unit Tests
+# "${{ inputs.package_name }}: Unit Tests"
+
+inputs:
+  package_name:
+    description: "The directory name of the package to test"
+    required: true
+    type: string
+  test_suite:
+    description: "The name of the test suite to run"
+    required: false
+    default: ""
+    type: string
+  github_token:
+    description: "The Github authentication token for the workflow"
+    type: string
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run test suite
+      env:
+        PACKAGE_NAME: ${{ inputs.package_name }}
+        TEST_SUITE: ${{ inputs.test_suite }}
+      shell: bash
+      run: |
+        cd $PACKAGE_NAME
+        docker run --name=temp test:latest test $TEST_SUITE
+        docker cp temp:/tmp/test-report.json /tmp/test-report.json
+
+    - name: Publish Test Report
+      uses: ctrf-io/github-test-reporter@v1
+      with:
+        report-path: "/tmp/test-report.json"
+        pull-request: true
+        update-comment: true
+        comment-tag: "test-report"
+        title: Unit Test report
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}

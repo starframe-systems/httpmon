@@ -1,0 +1,45 @@
+name: Unit Tests
+run-name: Run unit test suite
+
+on:
+  pull_request:
+  # push:
+  #   branches:
+  #     - "**"
+  #     - "!main"
+
+jobs:
+  test:
+    name: "Unit Tests"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      TEST_SUITE: unit
+    strategy:
+      matrix:
+        package_name: ["CanaryWorker"]
+
+    steps:
+      - name: Check out latest commit
+        uses: actions/checkout@v4
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Build Docker image
+        uses: "./.github/actions/build"
+        with:
+          package_name: ${{ matrix.package_name }}
+          version_string: ${{ steps.extract_branch.outputs.branch }}
+          target: "test"
+
+      - name: Run unit tests
+        uses: "./.github/actions/unit-tests"
+        with:
+          package_name: ${{ matrix.package_name }}
+          test_suite: ${{ env.TEST_SUITE }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
