@@ -1,0 +1,36 @@
+name: Build
+# "${{ inputs.package_name }}: Build ${{ inputs.target }}"
+
+inputs:
+  package_name:
+    description: "The directory name of the package to build"
+    required: true
+    type: string
+  target:
+    description: "The build target to use"
+    required: false
+    default: null
+    type: string
+  version_string:
+    description: "The version string for the build"
+    required: true
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Docker Build
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.package_name }}
+        platforms: linux/amd64
+        build-args: |
+          GITHUB_COMMIT_HASH=${{ github.sha }}
+          VERSION_NUMBER=${{ inputs.version_string }}
+        target: ${{ inputs.target }}
+        tags: ${{ inputs.target }}:latest
+        push: false
+        load: true
