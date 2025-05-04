@@ -17,20 +17,21 @@ type Detail = {
     found?: string | number;
 };
 
-type Event = {
-    requests: [Request];
+export type Event = {
+    requests: Request[];
 };
 
-type Request = {
+export type Request = {
     url: string;
     method?: 'GET' | 'POST' | 'PUT' | 'OPTIONS';
-    params?: { [key: string]: string };
+    params?: { [key: string]: string | number };
+    headers?: { [key: string]: string };
     data?: any;
     timeout?: number;
     expect?: PredicateDefinition[];
 };
 
-export const handler: Handler = async (event: Event, context: Context): Promise<void> => {
+export const handler = async (event: Event, context: Context): Promise<void> => {
     console.log({ event, context });
 
     for (const req of event.requests ?? []) {
@@ -49,6 +50,7 @@ export const handler: Handler = async (event: Event, context: Context): Promise<
             path: url.pathname + query,
             method: req.method || defaults.httpMethod,
             headers: {
+                ...(req.headers ?? {}),
                 'User-Agent': defaults.httpUserAgentString,
             },
             timeout: req.timeout || defaults.httpRequestTimeout,
@@ -59,7 +61,7 @@ export const handler: Handler = async (event: Event, context: Context): Promise<
         try {
             response = await request(opts, req.data);
         } catch (err) {
-            console.error(JSON.stringify({ message: err }, null, 2));
+            console.error(JSON.stringify({ message: err.toString() }, null, 2));
             continue;
         }
 
@@ -67,7 +69,7 @@ export const handler: Handler = async (event: Event, context: Context): Promise<
         let count = 0;
         let failed = 0;
 
-        for (const definition of req.expect) {
+        for (const definition of req.expect ?? []) {
             try {
                 const predicate = new Predicate(definition);
                 count += 1;
@@ -79,21 +81,28 @@ export const handler: Handler = async (event: Event, context: Context): Promise<
                     failed += 1;
                 }
             } catch (err) {
-                console.error(JSON.stringify({ message: err }, null, 2));
+                console.error(JSON.stringify({ message: err.toString() }, null, 2));
                 continue;
             }
         }
 
-        if (failed === 0) {
+        if (count > 0 && failed === 0) {
             console.log({
                 message: `${count === 1 ? '1 test' : 'all ' + count + ' tests'} passed`,
                 request: req,
                 response,
                 details,
             });
-        } else {
+        } else if (count > 0) {
             console.error({
-                message: `${failed} of ${count} test${count === 1 ? 's' : ''} failed`,
+                message: `${failed} of ${count} test${count === 1 ? '' : 's'} failed`,
+                request: req,
+                response,
+                details,
+            });
+        } else {
+            console.log({
+                message: `request succeeded`,
                 request: req,
                 response,
                 details,
