@@ -24,6 +24,8 @@ jobs:
     name: "Get Version Tag"
     runs-on: ubuntu-latest
     needs: was_merged
+    permissions:
+      contents: write
     outputs:
       version_tag: ${{ steps.version.outputs.version }}
 
