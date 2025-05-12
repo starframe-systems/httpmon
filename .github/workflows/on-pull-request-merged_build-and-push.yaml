@@ -58,8 +58,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    env:
-      TEST_SUITE: unit
     strategy:
       matrix:
         package_name: ["CanaryWorker"]
@@ -96,7 +94,7 @@ jobs:
           BUILD_ID: ${{ github.base_ref }}
         run: |
           echo '### Published version '${VERSION_TAG//\//-} >> $GITHUB_STEP_SUMMARY
-          echo '**Build Tag:** `$BUILD_ID`' >> $GITHUB_STEP_SUMMARY
+          echo "**Build Tag:** `$BUILD_ID`" >> $GITHUB_STEP_SUMMARY
           cat $GITHUB_STEP_SUMMARY > /tmp/summary.md
       - name: Post Pull Request Comment
         uses: marocchino/sticky-pull-request-comment@v2

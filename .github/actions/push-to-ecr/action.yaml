@@ -33,6 +33,7 @@ runs:
   steps:
     - name: Construct repository name
       id: constructed
+      shell: bash
       run: |
         REPOSITORY_NAME=$(echo -n ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/} \
         | tr '[:upper:]' '[:lower:]')
