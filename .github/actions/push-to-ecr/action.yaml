@@ -34,8 +34,6 @@ inputs:
 
 runs:
   using: "composite"
-  env:
-    AWS_REGION: us-east-1
   steps:
     - name: Construct repository name
       id: constructed
@@ -55,7 +53,7 @@ runs:
         # `aws_iam_role_github_deploy` Terraform output
         role-to-assume: ${{ inputs.role_to_assume }}
         role-session-name: "GithubActionsDeploy"
-        aws-region: us-west-2
+        aws-region: us-east-1
 
     - name: Login to Amazon ECR
       id: aws-ecr-login
