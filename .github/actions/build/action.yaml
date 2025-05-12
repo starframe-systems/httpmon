@@ -15,6 +15,10 @@ inputs:
     description: "The version string for the build"
     required: true
     type: string
+outputs:
+  default_tag:
+    description: "The name of the built image"
+    value: "${{ inputs.target }}:latest"
 
 runs:
   using: "composite"
