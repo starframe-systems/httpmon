@@ -30,8 +30,6 @@ inputs:
 
 runs:
   using: "composite"
-  permissions:
-    id-token: write
   steps:
     - name: Construct repository name
       id: constructed

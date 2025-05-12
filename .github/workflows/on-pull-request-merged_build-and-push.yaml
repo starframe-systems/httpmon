@@ -58,6 +58,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write
     env:
       TEST_SUITE: unit
     strategy:
@@ -96,7 +97,7 @@ jobs:
           BUILD_ID: ${{ github.base_ref }}
         run: |
           echo '### Published version '${VERSION_TAG//\//-} >> $GITHUB_STEP_SUMMARY
-          echo '**Build Tag:** `$BUILD_ID`' >> $GITHUB_STEP_SUMMARY
+          echo '**Build Tag:** `'${BUILD_ID}'`' >> $GITHUB_STEP_SUMMARY
           cat $GITHUB_STEP_SUMMARY > /tmp/summary.md
       - name: Post Pull Request Comment
         uses: marocchino/sticky-pull-request-comment@v2
