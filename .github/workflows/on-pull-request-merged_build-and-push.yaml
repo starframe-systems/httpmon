@@ -69,6 +69,7 @@ jobs:
 
       - name: Build Docker image
         uses: "./.github/actions/build"
+        id: build-image
         with:
           package_name: ${{ matrix.package_name }}
           version_string: ${{ needs.version.outputs.version_tag }}
@@ -79,6 +80,7 @@ jobs:
         with:
           package_name: ${{ matrix.package_name }}
           version_string: ${{ needs.version.outputs.version_tag }}
+          build_tag: ${{ steps.build-image.default_tag }}
           tag_as_latest: false
           role_to_assume: ${{ vars.AWS_ASSUME_IAM_ROLE }}
 

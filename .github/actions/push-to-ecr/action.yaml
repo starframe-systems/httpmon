@@ -22,6 +22,10 @@ inputs:
     description: "The AWS IAM Role to be used to push the image to ECR"
     type: string
     required: true
+  build_tag:
+    description: "The default tag from the build step"
+    type: string
+    required: true
   # role_session_name:
   # aws_account_id:
   #   description: "The 12-digit AWS Account ID"
@@ -58,25 +62,28 @@ runs:
       uses: aws-actions/amazon-ecr-login@v2
       with:
         mask-password: true
+        registry-type: public
 
     - name: Push tagged images to ECR
       id: aws-ecr-push
       shell: bash
       env:
         ECR_REGISTRY: ${{ steps.aws-ecr-login.outputs.registry }}
+        ECR_ALIAS: n2b6k8e5
         COMMIT_TAG: ${{ github.sha }}
         VERSION_TAG: ${{ inputs.version_string }}
         TAG_LATEST: ${{ inputs.tag_as_latest }}
+        BUILD_TAG: ${{ inputs.build_tag }}
       run: |
-        docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:$COMMIT_TAG
-        docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:${VERSION_TAG//\//-}
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$COMMIT_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${VERSION_TAG//\//-}
+        docker tag $BUILD_TAG $ECR_REGISTRY/$ECR_ALIAS/$ECR_REPOSITORY:$COMMIT_TAG
+        docker tag $BUILD_TAG $ECR_REGISTRY/$ECR_ALIAS/$ECR_REPOSITORY:${VERSION_TAG//\//-}
+        docker push $ECR_REGISTRY/$ECR_ALIAS/$ECR_REPOSITORY:$COMMIT_TAG
+        docker push $ECR_REGISTRY/$ECR_ALIAS/$ECR_REPOSITORY:${VERSION_TAG//\//-}
         if [ $TAG_LATEST = "true" ]; then
-          docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker tag $BUILD_TAG $ECR_REGISTRY/$ECR_ALIAS/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_ALIAS/$ECR_REPOSITORY:latest
         fi
-        echo "image-uri=$ECR_REGISTRY/$ECR_REPOSITORY" >> $GITHUB_OUTPUT
+        echo "image-uri=$ECR_REGISTRY/$ECR_ALIAS/$ECR_REPOSITORY" >> $GITHUB_OUTPUT
         echo "image-tag=$COMMIT_TAG" >> $GITHUB_OUTPUT
         echo '### Version Tag' >> $GITHUB_STEP_SUMMARY
         echo '`'${VERSION_TAG//\//-}'`' >> $GITHUB_STEP_SUMMARY
