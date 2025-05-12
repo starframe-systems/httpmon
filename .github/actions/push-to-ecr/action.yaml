@@ -58,6 +58,7 @@ runs:
 
     - name: Push tagged images to ECR
       id: aws-ecr-push
+      shell: bash
       env:
         ECR_REGISTRY: ${{ steps.aws-ecr-login.outputs.registry }}
         COMMIT_TAG: ${{ github.sha }}
