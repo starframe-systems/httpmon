@@ -1,0 +1,101 @@
+name: Build and Push
+run-name: Build Docker Image and Push to ECR
+
+on:
+  pull_request_target:
+    # We want to ensure only changes that go through PR review get pushed
+    # to ECR. This Workflow trigger will exclude force pushes to main.
+    branches: [main]
+    types: [closed]
+
+jobs:
+  was_merged:
+    name: "Only Run When Merged"
+    # This job is cancelled if the pull request was closed rather than merged.
+    # To prevent the rest of this workflow from running, the first job(s) in
+    # the workflow should have a `needs: was_merged` attribute.
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Pull request merged."
+
+  version:
+    name: "Get Version Tag"
+    runs-on: ubuntu-latest
+    needs: was_merged
+    outputs:
+      version_tag: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # ref: ${{ github.head_ref }} # checkout the correct branch name
+          fetch-depth: 0 # fetch the whole repo history
+
+      - uses: codacy/git-version@2.8.0
+        # This action can be configured to bump monorepo modules separately if needed.
+        # See docs at https://github.com/marketplace/actions/git-version
+        id: version
+        with:
+          release-branch: main
+          minor-identifier: "[semver:minor]"
+          major-identifier: "[semver:major]"
+          prefix: v
+
+      - run: |
+          git config --global user.email "robot@starframe.systems"
+          git config --global user.name "Github Automated Workflow"
+          git tag -m '${{ github.event.pull_request.title }} (#${{ github.event.pull_request.number }})' ${{ steps.version.outputs.version }} '${{ github.base_ref }}'
+          git push origin ${{ steps.version.outputs.version }}
+
+  build:
+    name: "Build and Push"
+    runs-on: ubuntu-latest
+    needs: [version]
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      TEST_SUITE: unit
+    strategy:
+      matrix:
+        package_name: ["CanaryWorker"]
+
+    steps:
+      - name: Check out latest commit
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        uses: "./.github/actions/build"
+        with:
+          package_name: ${{ matrix.package_name }}
+          version_string: ${{ needs.version.outputs.version_tag }}
+          target: "dist"
+
+      - name: Push to Amazon ECR
+        uses: "./.github/actions/push-to-ecr"
+        with:
+          package_name: ${{ matrix.package_name }}
+          version_string: ${{ needs.version.outputs.version_tag }}
+          tag_as_latest: false
+          role_to_assume: ${{ vars.AWS_ASSUME_IAM_ROLE }}
+
+  comment:
+    name: "Post Version Tag in PR Comment"
+    runs-on: ubuntu-latest
+    needs: [version]
+    steps:
+      - name: Compose Version Tag Message
+        env:
+          VERSION_TAG: ${{ needs.version.outputs.version_tag }}
+          BUILD_ID: ${{ github.base_ref }}
+        run: |
+          echo '### Published version '${VERSION_TAG//\//-} >> $GITHUB_STEP_SUMMARY
+          echo '**Build Tag:** `${BUILD_ID}`' >> $GITHUB_STEP_SUMMARY
+          cat $GITHUB_STEP_SUMMARY > /tmp/summary.md
+      - name: Post Pull Request Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          path: /tmp/summary.md

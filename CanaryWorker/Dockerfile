@@ -51,7 +51,7 @@ RUN mkdir -p /opt
 # --------------
 # Compile TypeScript Lambda code to JS
 FROM base AS builder
-RUN yarn build
+RUN npm run build
 
 # Lambda Execution Image:
 # -----------------------

@@ -1,0 +1,78 @@
+name: Unit Tests
+# "${{ inputs.package_name }}: Unit Tests"
+
+inputs:
+  package_name:
+    description: "The directory name of the package to test"
+    required: true
+    type: string
+  version_string:
+    description: "The version string used for the image tag"
+    required: true
+    type: string
+  tag_as_latest:
+    description: "Push with `:latest` tag if true"
+    type: string
+    default: "false"
+  github_token:
+    description: "The Github authentication token for the workflow"
+    type: string
+    required: true
+  role_to_assume:
+    description: "The AWS IAM Role to be used to push the image to ECR"
+    type: string
+    required: true
+  # role_session_name:
+  # aws_account_id:
+  #   description: "The 12-digit AWS Account ID"
+  #   type: string
+  #   required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Construct repository name
+      id: constructed
+      run: |
+        REPOSITORY_NAME=$(echo -n ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/} \
+        | tr '[:upper:]' '[:lower:]')
+        PACKAGE_NAME=$(echo -n ${{ inputs.package_name }} \
+        | tr '[:upper:]' '[:lower:]')
+        echo "ECR_REPOSITORY=$REPOSITORY_NAME/$PACKAGE_NAME" >>${GITHUB_ENV}
+        echo "GITHUB_REPO_NAME=$REPOSITORY_NAME" >>${GITHUB_ENV}
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        # The environment's var should be set to the value from the
+        # `aws_iam_role_github_deploy` Terraform output
+        role-to-assume: ${{ inputs.role_to_assume }}
+        role-session-name: "GithubActionsDeploy"
+        aws-region: us-west-2
+
+    - name: Login to Amazon ECR
+      id: aws-ecr-login
+      uses: aws-actions/amazon-ecr-login@v2
+      with:
+        mask-password: true
+
+    - name: Push tagged images to ECR
+      id: aws-ecr-push
+      env:
+        ECR_REGISTRY: ${{ steps.aws-ecr-login.outputs.registry }}
+        COMMIT_TAG: ${{ github.sha }}
+        VERSION_TAG: ${{ inputs.version_string }}
+        TAG_LATEST: ${{ inputs.tag_as_latest }}
+      run: |
+        docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:$COMMIT_TAG
+        docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:${VERSION_TAG//\//-}
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$COMMIT_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:${VERSION_TAG//\//-}
+        if [ $TAG_LATEST = "true" ]; then
+          docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        fi
+        echo "image-uri=$ECR_REGISTRY/$ECR_REPOSITORY" >> $GITHUB_OUTPUT
+        echo "image-tag=$COMMIT_TAG" >> $GITHUB_OUTPUT
+        echo '### Version Tag' >> $GITHUB_STEP_SUMMARY
+        echo '`'${VERSION_TAG//\//-}'`' >> $GITHUB_STEP_SUMMARY
