@@ -24,7 +24,14 @@ Payload schema:
       "method": "GET",
       "params": {
         "q": "httpmon"
-      }
+      },
+      "expect": [
+        {
+          "property": "body",
+          "operator": "contains",
+          "value": "starframe"
+        }
+      ]
     }
   ]
 }
