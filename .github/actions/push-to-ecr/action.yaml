@@ -34,6 +34,8 @@ inputs:
 
 runs:
   using: "composite"
+  env:
+    AWS_REGION: us-east-1
   steps:
     - name: Construct repository name
       id: constructed
