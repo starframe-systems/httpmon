@@ -80,7 +80,7 @@ jobs:
         with:
           package_name: ${{ matrix.package_name }}
           version_string: ${{ needs.version.outputs.version_tag }}
-          source_image: ${{ steps.build-image.source_image }}
+          source_image: ${{ steps.build-image.outputs.source_image }}
           tag_as_latest: false
           role_to_assume: ${{ vars.AWS_ASSUME_IAM_ROLE }}
 
