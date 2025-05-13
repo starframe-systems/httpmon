@@ -16,7 +16,7 @@ inputs:
     required: true
     type: string
 outputs:
-  default_tag:
+  source_image:
     description: "The name of the built image"
     value: "${{ inputs.target }}:latest"
 
